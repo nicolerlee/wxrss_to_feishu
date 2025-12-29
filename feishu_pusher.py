@@ -9,6 +9,7 @@
 import requests
 import json
 from datetime import datetime
+from pathlib import Path
 
 
 def get_tenant_access_token(app_id, app_secret):
@@ -89,9 +90,157 @@ def send_message_to_group(tenant_access_token, chat_id, msg_type, content):
         raise
 
 
+# ==================== 卡片元素构建辅助函数 ====================
+
+def create_markdown_element(content):
+    """创建Markdown文本元素"""
+    return {
+        "tag": "div",
+        "text": {
+            "tag": "lark_md",
+            "content": content
+        }
+    }
+
+
+def create_plain_text_element(content):
+    """创建纯文本元素"""
+    return {
+        "tag": "div",
+        "text": {
+            "tag": "plain_text",
+            "content": content
+        }
+    }
+
+
+def create_hr_element():
+    """创建分割线元素"""
+    return {"tag": "hr"}
+
+
+def build_overview_section(statistics):
+    """构建今日概览部分"""
+    lines = [
+        "📊 **今日概览**",
+        f"• 分析文章数: {statistics.get('total_articles', 0)}",
+        f"• 订阅账号数: {statistics.get('accounts_count', 0)}",
+    ]
+    return create_markdown_element("\n".join(lines))
+
+
+def build_inspiration_section(inspirations):
+    """构建选题灵感部分"""
+    if not inspirations:
+        return []
+    
+    elements = [
+        create_markdown_element("💡 **选题灵感**")
+    ]
+    
+    for i, topic in enumerate(inspirations, 1):
+        lines = [
+            f"**{i}. {topic.get('title', '')}**",
+            f"📐 角度: {topic.get('angle', '')}",
+            f"🎯 目标: {topic.get('target', '')}",
+            f"💎 价值: {topic.get('value', '')}",
+        ]
+        
+        # 添加参考文章
+        references = topic.get('references', [])
+        if references:
+            lines.append("")
+            lines.append("📚 参考文章:")
+            for article in references:
+                article_title = article.get('article_title', '文章')
+                article_url = article.get('url', '')
+                source = article.get('source', '')
+                lines.append(f"• [{article_title}]({article_url}) ({source})")
+        
+        elements.append(create_markdown_element("\n".join(lines)))
+    
+    return elements
+
+
+def build_deep_reading_section(deep_reading):
+    """构建深度阅读推荐部分"""
+    if not deep_reading:
+        return []
+    
+    elements = [
+        create_markdown_element("📚 **深度阅读推荐**")
+    ]
+    
+    for i, article in enumerate(deep_reading, 1):
+        article_title = article.get('article_title', '文章')
+        article_url = article.get('article_url', '')
+        source = article.get('source', '')
+        score = article.get('score', 0)
+        recommendation = article.get('recommendation', '')
+        value_point = article.get('value_point', '')
+        
+        lines = [
+            f"**{i}. [{article_title}]({article_url})**",
+            f"👤 作者: {source} | ⭐ 评分: {score}",
+            f"💬 推荐理由: {recommendation}",
+        ]
+        
+        if value_point:
+            lines.append(f"💡 核心价值: {value_point}")
+        
+        # 添加符合的标准
+        meets_criteria = article.get('meets_criteria', [])
+        if meets_criteria:
+            lines.append("")
+            lines.append("✅ 符合标准:")
+            for criterion in meets_criteria:
+                lines.append(f"  ✓ {criterion}")
+        
+        elements.append(create_markdown_element("\n".join(lines)))
+    
+    return elements
+
+
+def build_hot_topics_section(hot_topics):
+    """构建热点话题部分"""
+    if not hot_topics:
+        return []
+    
+    elements = [
+        create_markdown_element("🔥 **本周热点话题**")
+    ]
+    
+    for i, topic in enumerate(hot_topics, 1):
+        topic_name = topic.get('topic_name', '')
+        heat_level = topic.get('heat_level', '')
+        mention_count = topic.get('mention_count', 0)
+        analysis = topic.get('analysis', '')
+        
+        lines = [
+            f"**{i}. {topic_name}**",
+            f"🔥 热度: {heat_level} | 💬 讨论次数: {mention_count}",
+            f"📊 分析: {analysis}",
+        ]
+        
+        elements.append(create_markdown_element("\n".join(lines)))
+    
+    return elements
+
+
+def build_footer_section():
+    """构建底部信息"""
+    footer_lines = [
+        f"📅 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "🤖 由AI自动生成"
+    ]
+    return create_plain_text_element("\n".join(footer_lines))
+
+
+# ==================== 主函数：组装卡片 ====================
+
 def format_ai_report_to_feishu_card(report):
     """
-    将AI分析报告格式化为飞书消息卡片格式
+    将AI分析报告格式化为飞书消息卡片格式（使用规范的JSON结构）
     
     参数:
         report: AI分析报告 (dict)
@@ -101,11 +250,11 @@ def format_ai_report_to_feishu_card(report):
     """
     date = report.get("date", datetime.now().strftime("%Y-%m-%d"))
     statistics = report.get("statistics", {})
-    inspirations = report.get("inspirations", [])  # 选题灵感
-    deep_reading = report.get("deep_reading", [])  # 深度阅读
-    hot_topics = report.get("hot_topics", [])  # 热点话题
+    inspirations = report.get("inspirations", [])
+    deep_reading = report.get("deep_reading", [])
+    hot_topics = report.get("hot_topics", [])
     
-    # 构建飞书消息卡片（使用正确的格式）
+    # 基础卡片结构
     card = {
         "config": {
             "wide_screen_mode": True
@@ -115,149 +264,76 @@ def format_ai_report_to_feishu_card(report):
                 "tag": "plain_text",
                 "content": f"🤖 AI选题日报 - {date}"
             },
-            "template": "blue"  # 蓝色主题
+            "template": "blue"
         },
         "elements": []
     }
     
-    # ==================== 今日概览部分 ====================
-    overview_text = f"📊 **今日概览**\n"
-    overview_text += f"• 分析文章数: {statistics.get('total_articles', 0)}\n"
-    overview_text += f"• 订阅账号数: {statistics.get('accounts_count', 0)}\n"
+    # 组装各个部分（使用辅助函数）
+    elements = []
     
-    card["elements"].append({
-        "tag": "div",
-        "text": {
-            "tag": "lark_md",
-            "content": overview_text
-        }
-    })
+    # 1. 今日概览
+    elements.append(build_overview_section(statistics))
+    elements.append(create_hr_element())
     
-    # 添加分割线
-    card["elements"].append({"tag": "hr"})
+    # 2. 选题灵感
+    inspiration_elements = build_inspiration_section(inspirations)
+    if inspiration_elements:
+        elements.extend(inspiration_elements)
+        elements.append(create_hr_element())
     
-    # ==================== 选题灵感部分 ====================
-    if inspirations:
-        card["elements"].append({
-            "tag": "div",
-            "text": {
-                "tag": "lark_md",
-                "content": "💡 **选题灵感**"
-            }
-        })
-        
-        for i, topic in enumerate(inspirations, 1):
-            inspiration_text = f"**{i}. {topic.get('title', '')}**\n"
-            inspiration_text += f"📐 角度: {topic.get('angle', '')}\n"
-            inspiration_text += f"🎯 目标: {topic.get('target', '')}\n"
-            inspiration_text += f"💎 价值: {topic.get('value', '')}\n"
-            
-            # 添加参考文章
-            if topic.get('references'):
-                inspiration_text += f"\n📚 参考文章:\n"
-                for article in topic.get('references', []):
-                    article_title = article.get('article_title', '文章')
-                    article_url = article.get('url', '')
-                    source = article.get('source', '')
-                    inspiration_text += f"• [{article_title}]({article_url}) ({source})\n"
-            
-            card["elements"].append({
-                "tag": "div",
-                "text": {
-                    "tag": "lark_md",
-                    "content": inspiration_text
-                }
-            })
-        
-        # 添加分割线
-        card["elements"].append({"tag": "hr"})
+    # 3. 深度阅读推荐
+    reading_elements = build_deep_reading_section(deep_reading)
+    if reading_elements:
+        elements.extend(reading_elements)
+        elements.append(create_hr_element())
     
-    # ==================== 深度阅读推荐部分 ====================
-    if deep_reading:
-        card["elements"].append({
-            "tag": "div",
-            "text": {
-                "tag": "lark_md",
-                "content": "📚 **深度阅读推荐**"
-            }
-        })
-        
-        for i, article in enumerate(deep_reading, 1):
-            article_title = article.get('article_title', '文章')
-            article_url = article.get('article_url', '')
-            source = article.get('source', '')
-            score = article.get('score', 0)
-            recommendation = article.get('recommendation', '')
-            value_point = article.get('value_point', '')
-            
-            reading_text = f"**{i}. [{article_title}]({article_url})**\n"
-            reading_text += f"👤 作者: {source} | ⭐ 评分: {score}\n"
-            reading_text += f"💬 推荐理由: {recommendation}\n"
-            
-            if value_point:
-                reading_text += f"💡 核心价值: {value_point}\n"
-            
-            # 添加符合的标准
-            if article.get('meets_criteria'):
-                reading_text += f"\n✅ 符合标准:\n"
-                for criterion in article.get('meets_criteria', []):
-                    reading_text += f"  ✓ {criterion}\n"
-            
-            card["elements"].append({
-                "tag": "div",
-                "text": {
-                    "tag": "lark_md",
-                    "content": reading_text
-                }
-            })
-        
-        # 添加分割线
-        card["elements"].append({"tag": "hr"})
+    # 4. 热点话题
+    topic_elements = build_hot_topics_section(hot_topics)
+    if topic_elements:
+        elements.extend(topic_elements)
+        elements.append(create_hr_element())
     
-    # ==================== 热点话题部分 ====================
-    if hot_topics:
-        card["elements"].append({
-            "tag": "div",
-            "text": {
-                "tag": "lark_md",
-                "content": "🔥 **本周热点话题**"
-            }
-        })
-        
-        for i, topic in enumerate(hot_topics, 1):
-            topic_name = topic.get('topic_name', '')
-            heat_level = topic.get('heat_level', '')
-            mention_count = topic.get('mention_count', 0)
-            analysis = topic.get('analysis', '')
-            
-            topic_text = f"**{i}. {topic_name}**\n"
-            topic_text += f"🔥 热度: {heat_level} | 💬 讨论次数: {mention_count}\n"
-            topic_text += f"📊 分析: {analysis}\n"
-            
-            card["elements"].append({
-                "tag": "div",
-                "text": {
-                    "tag": "lark_md",
-                    "content": topic_text
-                }
-            })
-        
-        # 添加分割线
-        card["elements"].append({"tag": "hr"})
+    # 5. 底部信息
+    elements.append(build_footer_section())
     
-    # ==================== 底部信息 ====================
-    footer_text = f"📅 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-    footer_text += f"🤖 由AI自动生成"
-    
-    card["elements"].append({
-        "tag": "div",
-        "text": {
-            "tag": "plain_text",
-            "content": footer_text
-        }
-    })
+    # 将元素添加到卡片
+    card["elements"] = elements
     
     return json.dumps(card, ensure_ascii=False)
+
+
+def save_card_json_to_file(card_json_str, report_date=None):
+    """
+    保存卡片JSON到文件
+    
+    参数:
+        card_json_str: 卡片JSON字符串
+        report_date: 报告日期（用于文件名）
+    
+    返回:
+        保存的文件路径
+    """
+    # 创建输出目录
+    output_dir = Path(__file__).parent / "data" / "cards"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 生成文件名（带时间戳）
+    if report_date:
+        date_str = report_date.replace("-", "")
+    else:
+        date_str = datetime.now().strftime("%Y%m%d")
+    
+    timestamp = datetime.now().strftime("%H%M%S")
+    filename = f"card_{date_str}_{timestamp}.json"
+    filepath = output_dir / filename
+    
+    # 格式化JSON并保存
+    card_dict = json.loads(card_json_str)
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(card_dict, f, ensure_ascii=False, indent=2)
+    
+    return str(filepath)
 
 
 def push_report_to_feishu(report, app_id, app_secret, chat_id):
@@ -285,7 +361,22 @@ def push_report_to_feishu(report, app_id, app_secret, chat_id):
         print(f"\n📝 正在格式化报告为消息卡片...")
         content = format_ai_report_to_feishu_card(report)
         
-        # 3. 发送消息（使用 interactive 类型）
+        # 3. 打印卡片JSON（格式化显示）
+        print("\n" + "=" * 60)
+        print("📋 生成的卡片JSON：")
+        print("=" * 60)
+        card_dict = json.loads(content)
+        formatted_json = json.dumps(card_dict, ensure_ascii=False, indent=2)
+        print(formatted_json)
+        
+        # 4. 保存到文件
+        report_date = report.get("date")
+        filepath = save_card_json_to_file(content, report_date)
+        print("\n" + "=" * 60)
+        print(f"💾 卡片JSON已保存到: {filepath}")
+        print("=" * 60)
+        
+        # 5. 发送消息（使用 interactive 类型）
         result = send_message_to_group(token, chat_id, "interactive", content)
         
         print("\n" + "=" * 60)

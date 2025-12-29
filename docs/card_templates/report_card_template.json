@@ -1,0 +1,14 @@
+{
+  "config": {
+    "wide_screen_mode": true
+  },
+  "header": {
+    "title": {
+      "tag": "plain_text",
+      "content": ""
+    },
+    "template": "blue"
+  },
+  "elements": []
+}
+

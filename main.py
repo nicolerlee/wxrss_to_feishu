@@ -9,6 +9,7 @@ WeChat RSS → AI选题日报
 import sys
 import json
 from datetime import datetime
+from pathlib import Path
 import config
 from rss_fetcher import fetch_rss_articles
 from data_cleaner import clean_articles_v2
@@ -17,11 +18,28 @@ from feishu_pusher import push_report_to_feishu
 from feishu_bitable import save_articles_to_feishu_bitable
 
 
-def save_json(data, filename):
-    """保存数据到JSON文件"""
-    with open(filename, 'w', encoding='utf-8') as f:
+def save_json(data, filename, output_dir=None):
+    """
+    保存数据到JSON文件
+    
+    参数:
+        data: 要保存的数据
+        filename: 文件名
+        output_dir: 输出目录（默认为当前目录）
+    """
+    # 如果指定了输出目录，创建完整路径
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
+        filepath = output_path / filename
+    else:
+        filepath = Path(filename)
+    
+    # 保存文件
+    with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"✅ 数据已保存到: {filename}")
+    
+    print(f"✅ 数据已保存到: {filepath}")
 
 
 def main():
@@ -54,7 +72,7 @@ def main():
         
         # 保存原始数据（可选）
         if getattr(config, 'SAVE_RAW_DATA', False):
-            save_json(articles, "raw_articles.json")
+            save_json(articles, "raw_articles.json", output_dir="data")
         
         # ==================== 第2步：清洗数据 ====================
         print("\n" + "=" * 80)
@@ -155,9 +173,9 @@ def main():
             model=model
         )
         
-        # 保存报告
+        # 保存报告到 reports 目录
         report_filename = f"ai_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        save_json(report, report_filename)
+        save_json(report, report_filename, output_dir="reports")
         
         # ==================== 第4步：推送AI报告到飞书群（可选）====================
         if push_mode in ['group', 'both']:
@@ -197,7 +215,7 @@ def main():
         print(f"   • 选题灵感: {len(report.get('topic_inspirations', []))} 条")
         print(f"   • 深度推荐: {len(report.get('deep_reading', []))} 篇")
         print(f"   • 热点话题: {len(report.get('hot_topics', []))} 个")
-        print(f"\n📁 报告文件: {report_filename}")
+        print(f"\n📁 报告文件: reports/{report_filename}")
         print(f"⏰ 结束时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         
     except KeyboardInterrupt:
