@@ -1,0 +1,5 @@
+__pycache__
+venv
+ai_report_*.json
+data/
+config.py

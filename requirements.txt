@@ -1,0 +1,25 @@
+# RSS解析和爬取
+feedparser==6.0.11
+requests==2.31.0
+
+# HTML解析和清洗
+beautifulsoup4==4.12.3
+lxml==5.1.0
+markdownify>=0.11.6  # HTML转Markdown
+
+# 时间处理
+pytz==2024.1
+
+# AI调用
+anthropic==0.39.0  # Claude API
+openai>=1.12.0  # OpenAI API / DeepSeek API（兼容格式）
+
+# 飞书API
+lark-oapi==1.5.2
+
+# 定时任务
+schedule==1.2.1
+
+# 数据处理
+python-dateutil==2.8.2
+

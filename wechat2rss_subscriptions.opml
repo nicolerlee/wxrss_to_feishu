@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+	<head>
+		<title>Wechat2RSS Feeds</title>
+	</head>
+	<body>
+		<outline text="陈老师AI进化论" type="rss" xmlUrl="http://localhost:8081/feed/3074462761.xml" htmlUrl="http://localhost:8081/feed/3074462761.xml" title="陈老师AI进化论"></outline>
+		<outline text="彬哥AI" type="rss" xmlUrl="http://localhost:8081/feed/3964236078.xml" htmlUrl="http://localhost:8081/feed/3964236078.xml" title="彬哥AI"></outline>
+		<outline text="鲤鱼冲啊" type="rss" xmlUrl="http://localhost:8081/feed/3898556470.xml" htmlUrl="http://localhost:8081/feed/3898556470.xml" title="鲤鱼冲啊"></outline>
+		<outline text="HiAi智能体" type="rss" xmlUrl="http://localhost:8081/feed/3910757492.xml" htmlUrl="http://localhost:8081/feed/3910757492.xml" title="HiAi智能体"></outline>
+		<outline text="ai瑞斯白-n8n版" type="rss" xmlUrl="http://localhost:8081/feed/3519780131.xml" htmlUrl="http://localhost:8081/feed/3519780131.xml" title="ai瑞斯白-n8n版"></outline>
+		<outline text="龙须草AI" type="rss" xmlUrl="http://localhost:8081/feed/3625188011.xml" htmlUrl="http://localhost:8081/feed/3625188011.xml" title="龙须草AI"></outline>
+		<outline text="二师兄聊AI" type="rss" xmlUrl="http://localhost:8081/feed/3913883206.xml" htmlUrl="http://localhost:8081/feed/3913883206.xml" title="二师兄聊AI"></outline>
+		<outline text="陈序员大康AI" type="rss" xmlUrl="http://localhost:8081/feed/3897736145.xml" htmlUrl="http://localhost:8081/feed/3897736145.xml" title="陈序员大康AI"></outline>
+		<outline text="kate人不错" type="rss" xmlUrl="http://localhost:8081/feed/3292478673.xml" htmlUrl="http://localhost:8081/feed/3292478673.xml" title="kate人不错"></outline>
+		<outline text="AI产品黄叔" type="rss" xmlUrl="http://localhost:8081/feed/2398553439.xml" htmlUrl="http://localhost:8081/feed/2398553439.xml" title="AI产品黄叔"></outline>
+	</body>
+</opml>
