@@ -89,149 +89,180 @@ def send_message_to_group(tenant_access_token, chat_id, msg_type, content):
         raise
 
 
-def format_ai_report_to_feishu(report):
+def format_ai_report_to_feishu_card(report):
     """
-    将AI分析报告格式化为飞书富文本消息格式
+    将AI分析报告格式化为飞书消息卡片格式
     
     参数:
         report: AI分析报告 (dict)
     
     返回:
-        飞书富文本消息内容 (JSON字符串)
+        飞书消息卡片内容 (JSON字符串)
     """
     date = report.get("date", datetime.now().strftime("%Y-%m-%d"))
     statistics = report.get("statistics", {})
-    inspirations = report.get("inspirations", [])  # ✅ 修正字段名
-    deep_reading = report.get("deep_reading", [])
-    hot_topics = report.get("hot_topics", [])
+    inspirations = report.get("inspirations", [])  # 选题灵感
+    deep_reading = report.get("deep_reading", [])  # 深度阅读
+    hot_topics = report.get("hot_topics", [])  # 热点话题
     
-    # 构建飞书富文本内容
-    content = {
-        "zh_cn": {
-            "title": f"🤖 AI选题日报 - {date}",
-            "content": []
-        }
+    # 构建飞书消息卡片（使用正确的格式）
+    card = {
+        "config": {
+            "wide_screen_mode": True
+        },
+        "header": {
+            "title": {
+                "tag": "plain_text",
+                "content": f"🤖 AI选题日报 - {date}"
+            },
+            "template": "blue"  # 蓝色主题
+        },
+        "elements": []
     }
     
-    # 添加概览部分
-    content["zh_cn"]["content"].append([
-        {"tag": "text", "text": "📊 ", "style": ["bold"]},
-        {"tag": "text", "text": "今日概览", "style": ["bold"]},
-    ])
-    content["zh_cn"]["content"].append([
-        {"tag": "text", "text": f"• 分析文章数: {statistics.get('total_articles', 0)}"}
-    ])
-    content["zh_cn"]["content"].append([
-        {"tag": "text", "text": f"• 订阅账号数: {statistics.get('accounts_count', 0)}"}
-    ])
-    content["zh_cn"]["content"].append([
-        {"tag": "text", "text": f"• 主要话题: "}
-    ])
-    content["zh_cn"]["content"].append([{"tag": "text", "text": ""}])  # 空行
+    # ==================== 今日概览部分 ====================
+    overview_text = f"📊 **今日概览**\n"
+    overview_text += f"• 分析文章数: {statistics.get('total_articles', 0)}\n"
+    overview_text += f"• 订阅账号数: {statistics.get('accounts_count', 0)}\n"
     
-    # 添加选题灵感部分
+    card["elements"].append({
+        "tag": "div",
+        "text": {
+            "tag": "lark_md",
+            "content": overview_text
+        }
+    })
+    
+    # 添加分割线
+    card["elements"].append({"tag": "hr"})
+    
+    # ==================== 选题灵感部分 ====================
     if inspirations:
-        content["zh_cn"]["content"].append([
-            {"tag": "text", "text": "💡 ", "style": ["bold"]},
-            {"tag": "text", "text": "选题灵感", "style": ["bold"]},
-        ])
+        card["elements"].append({
+            "tag": "div",
+            "text": {
+                "tag": "lark_md",
+                "content": "💡 **选题灵感**"
+            }
+        })
+        
         for i, topic in enumerate(inspirations, 1):
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"{i}. {topic.get('title', '')}", "style": ["bold"]}
-            ])
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"   角度: {topic.get('angle', '')}"}
-            ])
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"   目标: {topic.get('target', '')}"}
-            ])
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"   价值: {topic.get('value', '')}"}
-            ])
+            inspiration_text = f"**{i}. {topic.get('title', '')}**\n"
+            inspiration_text += f"📐 角度: {topic.get('angle', '')}\n"
+            inspiration_text += f"🎯 目标: {topic.get('target', '')}\n"
+            inspiration_text += f"💎 价值: {topic.get('value', '')}\n"
             
             # 添加参考文章
             if topic.get('references'):
-                content["zh_cn"]["content"].append([
-                    {"tag": "text", "text": "   参考文章:"}
-                ])
+                inspiration_text += f"\n📚 参考文章:\n"
                 for article in topic.get('references', []):
-                    content["zh_cn"]["content"].append([
-                        {"tag": "text", "text": f"   • "},
-                        {"tag": "a", "text": article.get('article_title', ''), "href": article.get('url', '')},
-                        {"tag": "text", "text": f" ({article.get('source', '')})"}
-                    ])
-            content["zh_cn"]["content"].append([{"tag": "text", "text": ""}])  # 空行
-    
-    # 添加深度阅读推荐部分
-    if deep_reading:
-        content["zh_cn"]["content"].append([
-            {"tag": "text", "text": "📚 ", "style": ["bold"]},
-            {"tag": "text", "text": "深度阅读推荐", "style": ["bold"]},
-        ])
-        for i, article in enumerate(deep_reading, 1):
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"{i}. ", "style": ["bold"]},
-                {"tag": "a", "text": article.get('article_title', ''), "href": article.get('article_url', ''), "style": ["bold"]},
-            ])
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"   作者: {article.get('source', '')} | 评分: {article.get('score', 0)}"}
-            ])
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"   推荐理由: {article.get('recommendation', '')}"}
-            ])
+                    article_title = article.get('article_title', '文章')
+                    article_url = article.get('url', '')
+                    source = article.get('source', '')
+                    inspiration_text += f"• [{article_title}]({article_url}) ({source})\n"
             
-            # 添加价值点
-            if article.get('value_point'):
-                content["zh_cn"]["content"].append([
-                    {"tag": "text", "text": f"   核心价值: {article.get('value_point', '')}"}
-                ])
+            card["elements"].append({
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": inspiration_text
+                }
+            })
+        
+        # 添加分割线
+        card["elements"].append({"tag": "hr"})
+    
+    # ==================== 深度阅读推荐部分 ====================
+    if deep_reading:
+        card["elements"].append({
+            "tag": "div",
+            "text": {
+                "tag": "lark_md",
+                "content": "📚 **深度阅读推荐**"
+            }
+        })
+        
+        for i, article in enumerate(deep_reading, 1):
+            article_title = article.get('article_title', '文章')
+            article_url = article.get('article_url', '')
+            source = article.get('source', '')
+            score = article.get('score', 0)
+            recommendation = article.get('recommendation', '')
+            value_point = article.get('value_point', '')
+            
+            reading_text = f"**{i}. [{article_title}]({article_url})**\n"
+            reading_text += f"👤 作者: {source} | ⭐ 评分: {score}\n"
+            reading_text += f"💬 推荐理由: {recommendation}\n"
+            
+            if value_point:
+                reading_text += f"💡 核心价值: {value_point}\n"
             
             # 添加符合的标准
             if article.get('meets_criteria'):
-                content["zh_cn"]["content"].append([
-                    {"tag": "text", "text": "   符合标准:"}
-                ])
+                reading_text += f"\n✅ 符合标准:\n"
                 for criterion in article.get('meets_criteria', []):
-                    content["zh_cn"]["content"].append([
-                        {"tag": "text", "text": f"   ✓ {criterion}"}
-                    ])
-            content["zh_cn"]["content"].append([{"tag": "text", "text": ""}])  # 空行
+                    reading_text += f"  ✓ {criterion}\n"
+            
+            card["elements"].append({
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": reading_text
+                }
+            })
+        
+        # 添加分割线
+        card["elements"].append({"tag": "hr"})
     
-    # 添加热点话题部分
+    # ==================== 热点话题部分 ====================
     if hot_topics:
-        content["zh_cn"]["content"].append([
-            {"tag": "text", "text": "🔥 ", "style": ["bold"]},
-            {"tag": "text", "text": "本周热点话题", "style": ["bold"]},
-        ])
+        card["elements"].append({
+            "tag": "div",
+            "text": {
+                "tag": "lark_md",
+                "content": "🔥 **本周热点话题**"
+            }
+        })
+        
         for i, topic in enumerate(hot_topics, 1):
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"{i}. {topic.get('topic_name', '')}", "style": ["bold"]}
-            ])
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"   热度: {topic.get('heat_level', '')} | 讨论次数: {topic.get('mention_count', 0)}"}
-            ])
-            content["zh_cn"]["content"].append([
-                {"tag": "text", "text": f"   分析: {topic.get('analysis', '')}"}
-            ])
-            content["zh_cn"]["content"].append([{"tag": "text", "text": ""}])  # 空行
+            topic_name = topic.get('topic_name', '')
+            heat_level = topic.get('heat_level', '')
+            mention_count = topic.get('mention_count', 0)
+            analysis = topic.get('analysis', '')
+            
+            topic_text = f"**{i}. {topic_name}**\n"
+            topic_text += f"🔥 热度: {heat_level} | 💬 讨论次数: {mention_count}\n"
+            topic_text += f"📊 分析: {analysis}\n"
+            
+            card["elements"].append({
+                "tag": "div",
+                "text": {
+                    "tag": "lark_md",
+                    "content": topic_text
+                }
+            })
+        
+        # 添加分割线
+        card["elements"].append({"tag": "hr"})
     
-    # 添加底部信息
-    content["zh_cn"]["content"].append([
-        {"tag": "text", "text": "---"}
-    ])
-    content["zh_cn"]["content"].append([
-        {"tag": "text", "text": f"📅 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"}
-    ])
-    content["zh_cn"]["content"].append([
-        {"tag": "text", "text": "🤖 由AI自动生成"}
-    ])
+    # ==================== 底部信息 ====================
+    footer_text = f"📅 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+    footer_text += f"🤖 由AI自动生成"
     
-    return json.dumps(content, ensure_ascii=False)
+    card["elements"].append({
+        "tag": "div",
+        "text": {
+            "tag": "plain_text",
+            "content": footer_text
+        }
+    })
+    
+    return json.dumps(card, ensure_ascii=False)
 
 
 def push_report_to_feishu(report, app_id, app_secret, chat_id):
     """
-    将AI报告推送到飞书群
+    将AI报告推送到飞书群（使用消息卡片格式）
     
     参数:
         report: AI分析报告
@@ -250,12 +281,12 @@ def push_report_to_feishu(report, app_id, app_secret, chat_id):
         # 1. 获取 tenant_access_token
         token = get_tenant_access_token(app_id, app_secret)
         
-        # 2. 格式化报告
-        print(f"\n📝 正在格式化报告...")
-        content = format_ai_report_to_feishu(report)
+        # 2. 格式化报告为卡片
+        print(f"\n📝 正在格式化报告为消息卡片...")
+        content = format_ai_report_to_feishu_card(report)
         
-        # 3. 发送消息
-        result = send_message_to_group(token, chat_id, "post", content)
+        # 3. 发送消息（使用 interactive 类型）
+        result = send_message_to_group(token, chat_id, "interactive", content)
         
         print("\n" + "=" * 60)
         print("✅ 推送完成!")
